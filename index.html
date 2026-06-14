@@ -77,17 +77,30 @@ fetch(DATA_URL, { cache: "no-store" })
 
     log("DATA RECEIVED");
 
-    if(!Array.isArray(data)){
-        log("ERROR: data not array");
-        log(JSON.stringify(data).slice(0,200));
+    if(!data.items){
+        log("ERROR: no items");
         data = [];
+    } else {
+        data = data.items;
     }
 
+    // 🔥 核心：扁平化数据
+    data = data.map(item => {
+
+        let firstSense = item.senses?.[0] || {};
+
+        return {
+            word: item.word,
+            meaning: (firstSense.meaning || []).join(","),
+            tag: firstSense.tag || [],
+            score: item.id
+        };
+
+    });
+
+    log("FLATTEN DONE");
     log("DATA LENGTH: " + data.length);
 
-    // ---------------------------
-    // TABLE INIT
-    // ---------------------------
     table = new Tabulator("#table", {
         data: data,
         layout: "fitColumns",
@@ -96,9 +109,7 @@ fetch(DATA_URL, { cache: "no-store" })
         columns: [
             {title:"Word", field:"word"},
             {title:"Meaning", field:"meaning"},
-            {
-                title:"Tag",
-                field:"tag",
+            {title:"Tag", field:"tag",
                 formatter:function(cell){
                     let val = cell.getValue();
                     if(!Array.isArray(val)) return "";
@@ -110,7 +121,7 @@ fetch(DATA_URL, { cache: "no-store" })
     });
 
     log("TABLE READY");
-
+})
 })
 .catch(err=>{
     log("FETCH ERROR: " + err);
