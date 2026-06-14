@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>My Dict iOS Stable</title>
+
+<link href="https://cdn.jsdelivr.net/npm/tabulator-tables@5.5.0/dist/css/tabulator.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/tabulator-tables@5.5.0/dist/js/tabulator.min.js"></script>
+
+<style>
+body{
+  font-family: -apple-system, Arial;
+  margin:10px;
+}
+
+#search{
+  width:100%;
+  padding:12px;
+  font-size:16px;
+  margin-bottom:10px;
+}
+
+.chip{
+  display:inline-block;
+  padding:2px 8px;
+  margin:2px;
+  border-radius:12px;
+  background:#eaeaea;
+  font-size:12px;
+}
+</style>
+</head>
+
+<body>
+
+<input id="search" placeholder="Search word / meaning / tag..." />
+
+<div id="table"></div>
+
+<script>
+
+const DATA_URL =
+"https://raw.githubusercontent.com/a66379903-cmd/mydict/main/mydict.json";
+
+let table;
+
+// ---------------------------
+// 1. 安全 fetch（iOS优化）
+// ---------------------------
+fetch(DATA_URL, { cache: "no-store" })
+.then(res => {
+    if (!res.ok) throw new Error("HTTP error " + res.status);
+    return res.json();
+})
+.then(data => {
+
+    if(!Array.isArray(data)){
+        console.error("DATA NOT ARRAY:", data);
+        data = [];
+    }
+
+    // ---------------------------
+    // 2. Tabulator 初始化
+    // ---------------------------
+    table = new Tabulator("#table", {
+        data: data,
+        layout: "fitColumns",
+        height: "85vh",
+
+        columns: [
+            {
+                title:"Word",
+                field:"word",
+                editor:"input"
+            },
+
+            {
+                title:"Meaning",
+                field:"meaning",
+                editor:"input"
+            },
+
+            {
+                title:"Tag",
+                field:"tag",
+
+                formatter:function(cell){
+                    let val = cell.getValue();
+
+                    if(!Array.isArray(val)) return "";
+
+                    return val.map(t =>
+                        `<span class="chip">${t}</span>`
+                    ).join(" ");
+                }
+            },
+
+            {
+                title:"Score",
+                field:"score",
+                editor:"number"
+            }
+        ]
+    });
+
+    console.log("Table ready");
+
+})
+.catch(err=>{
+    console.error("Fetch failed:", err);
+});
+
+// ---------------------------
+// 3. iOS稳定搜索（关键修复点）
+// ---------------------------
+const input = document.getElementById("search");
+
+let timer;
+
+input.addEventListener("input", function(e){
+
+    const v = e.target.value.trim().toLowerCase();
+
+    clearTimeout(timer);
+
+    timer = setTimeout(()=>{
+
+        if(!table){
+            console.log("table not ready");
+            return;
+        }
+
+        if(v === ""){
+            table.clearFilter();
+            return;
+        }
+
+        // ✔ iOS稳定写法（不用JSON stringify）
+        table.setFilter(function(data){
+
+            return (
+                (data.word && data.word.toLowerCase().includes(v)) ||
+                (data.meaning && data.meaning.toLowerCase().includes(v)) ||
+                (Array.isArray(data.tag) && data.tag.join(" ").toLowerCase().includes(v))
+            );
+
+        });
+
+    }, 120); // iOS防抖优化
+
+});
+
+</script>
+
+</body>
+</html>
