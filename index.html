@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>My Dict iOS Stable</title>
+<title>My Dict iOS Stable v1.1</title>
 
 <link href="https://cdn.jsdelivr.net/npm/tabulator-tables@5.5.0/dist/css/tabulator.min.css" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/tabulator-tables@5.5.0/dist/js/tabulator.min.js"></script>
@@ -42,9 +42,9 @@ body{
 </head>
 
 <body>
-<br>
-  改进版1
-<br/>
+
+<div>改进版本：1.1</div>
+
 <input id="search" placeholder="Search word / meaning / tag..." />
 
 <pre id="log"></pre>
@@ -84,7 +84,7 @@ fetch(DATA_URL, { cache: "no-store" })
         data = data.items;
     }
 
-    // 🔥 核心：扁平化数据
+    // 扁平化
     data = data.map(item => {
 
         let firstSense = item.senses?.[0] || {};
@@ -109,7 +109,9 @@ fetch(DATA_URL, { cache: "no-store" })
         columns: [
             {title:"Word", field:"word"},
             {title:"Meaning", field:"meaning"},
-            {title:"Tag", field:"tag",
+            {
+                title:"Tag",
+                field:"tag",
                 formatter:function(cell){
                     let val = cell.getValue();
                     if(!Array.isArray(val)) return "";
@@ -121,7 +123,6 @@ fetch(DATA_URL, { cache: "no-store" })
     });
 
     log("TABLE READY");
-})
 })
 .catch(err=>{
     log("FETCH ERROR: " + err);
