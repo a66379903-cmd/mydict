@@ -8,7 +8,6 @@
 <script src="https://cdn.jsdelivr.net/npm/tabulator-tables@5.5.0/dist/js/tabulator.min.js"></script>
 
 <style>
-<pre id="log"></pre>
 body{
   font-family: -apple-system, Arial;
   margin:10px;
@@ -18,6 +17,16 @@ body{
   width:100%;
   padding:12px;
   font-size:16px;
+  margin-bottom:10px;
+}
+
+#log{
+  height:120px;
+  overflow:auto;
+  background:#111;
+  color:#0f0;
+  font-size:12px;
+  padding:8px;
   margin-bottom:10px;
 }
 
@@ -36,9 +45,12 @@ body{
 
 <input id="search" placeholder="Search word / meaning / tag..." />
 
+<pre id="log"></pre>
+
 <div id="table"></div>
 
 <script>
+
 function log(msg){
     document.getElementById("log").innerText += msg + "\n";
 }
@@ -48,74 +60,62 @@ const DATA_URL =
 
 let table;
 
+log("PAGE LOADED");
+log("FETCH START...");
+
 // ---------------------------
-// 1. 安全 fetch（iOS优化）
+// FETCH
 // ---------------------------
 fetch(DATA_URL, { cache: "no-store" })
 .then(res => {
-    if (!res.ok) throw new Error("HTTP error " + res.status);
+    log("HTTP STATUS: " + res.status);
     return res.json();
 })
 .then(data => {
 
+    log("DATA RECEIVED");
+
     if(!Array.isArray(data)){
-        console.error("DATA NOT ARRAY:", data);
+        log("ERROR: data not array");
+        log(JSON.stringify(data).slice(0,200));
         data = [];
     }
 
+    log("DATA LENGTH: " + data.length);
+
     // ---------------------------
-    // 2. Tabulator 初始化
+    // TABLE INIT
     // ---------------------------
     table = new Tabulator("#table", {
         data: data,
         layout: "fitColumns",
-        height: "85vh",
+        height: "70vh",
 
         columns: [
-            {
-                title:"Word",
-                field:"word",
-                editor:"input"
-            },
-
-            {
-                title:"Meaning",
-                field:"meaning",
-                editor:"input"
-            },
-
+            {title:"Word", field:"word"},
+            {title:"Meaning", field:"meaning"},
             {
                 title:"Tag",
                 field:"tag",
-
                 formatter:function(cell){
                     let val = cell.getValue();
-
                     if(!Array.isArray(val)) return "";
-
-                    return val.map(t =>
-                        `<span class="chip">${t}</span>`
-                    ).join(" ");
+                    return val.map(t => `<span class="chip">${t}</span>`).join(" ");
                 }
             },
-
-            {
-                title:"Score",
-                field:"score",
-                editor:"number"
-            }
+            {title:"Score", field:"score"}
         ]
     });
 
-    console.log("Table ready");
+    log("TABLE READY");
 
 })
 .catch(err=>{
-    console.error("Fetch failed:", err);
+    log("FETCH ERROR: " + err);
 });
 
 // ---------------------------
-// 3. iOS稳定搜索（关键修复点）
+// SEARCH
 // ---------------------------
 const input = document.getElementById("search");
 
@@ -125,21 +125,23 @@ input.addEventListener("input", function(e){
 
     const v = e.target.value.trim().toLowerCase();
 
+    log("SEARCH: " + v);
+
     clearTimeout(timer);
 
     timer = setTimeout(()=>{
 
         if(!table){
-            console.log("table not ready");
+            log("TABLE NOT READY");
             return;
         }
 
         if(v === ""){
             table.clearFilter();
+            log("FILTER CLEARED");
             return;
         }
 
-        // ✔ iOS稳定写法（不用JSON stringify）
         table.setFilter(function(data){
 
             return (
@@ -150,7 +152,7 @@ input.addEventListener("input", function(e){
 
         });
 
-    }, 120); // iOS防抖优化
+    }, 120);
 
 });
 
