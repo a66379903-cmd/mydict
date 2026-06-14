@@ -8,6 +8,7 @@
 <script src="https://cdn.jsdelivr.net/npm/tabulator-tables@5.5.0/dist/js/tabulator.min.js"></script>
 
 <style>
+<pre id="log"></pre>
 body{
   font-family: -apple-system, Arial;
   margin:10px;
@@ -38,6 +39,9 @@ body{
 <div id="table"></div>
 
 <script>
+function log(msg){
+    document.getElementById("log").innerText += msg + "\n";
+}
 
 const DATA_URL =
 "https://raw.githubusercontent.com/a66379903-cmd/mydict/main/mydict.json";
