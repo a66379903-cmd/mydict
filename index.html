@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>My Dict v1.4 Test Token Split</title>
+<title>MyDict v1.5 Debug Save</title>
 
 <link href="https://cdn.jsdelivr.net/npm/tabulator-tables@5.5.0/dist/css/tabulator.min.css" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/tabulator-tables@5.5.0/dist/js/tabulator.min.js"></script>
@@ -10,7 +10,7 @@
 <style>
 body{font-family:-apple-system;margin:10px;}
 #search{width:100%;padding:12px;margin-bottom:10px;font-size:16px;}
-#log{height:120px;background:#111;color:#0f0;overflow:auto;font-size:12px;padding:8px;margin-bottom:10px;}
+#log{height:140px;background:#111;color:#0f0;overflow:auto;font-size:12px;padding:8px;margin-bottom:10px;}
 button{padding:10px;margin-bottom:10px;}
 .chip{display:inline-block;padding:2px 8px;margin:2px;border-radius:12px;background:#eaeaea;font-size:12px;}
 </style>
@@ -18,12 +18,12 @@ button{padding:10px;margin-bottom:10px;}
 
 <body>
 
-<div>MyDict v1.4 test (split token)</div>
+<div>MyDict v1.5 DEBUG SAVE</div>
 
 <input id="search" placeholder="search..." />
 <br>
 
-<button onclick="saveToGitHub()">💾 Save</button>
+<button onclick="saveToGitHub()">💾 SAVE TO GITHUB</button>
 
 <pre id="log"></pre>
 
@@ -35,30 +35,31 @@ function log(msg){
     document.getElementById("log").innerText += msg + "\n";
 }
 
+// ================= CONFIG =================
+const CONFIG = {
+    repo: "a66379903-cmd/mydict",
+    file: "mydict.json"
+};
+
 const DATA_URL = "https://raw.githubusercontent.com/a66379903-cmd/mydict/main/mydict.json";
 
-const T1_URL = "t1.json";
-const T2_URL = "t2.json";
+// ================= TOKEN SPLIT =================
+async function loadToken(){
 
-const REPO = "a66379903-cmd/mydict";
-const FILE = "mydict.json";
+    log("LOAD TOKEN PARTS...");
+
+    let a = await fetch("t1.json").then(r => r.json());
+    let b = await fetch("t2.json").then(r => r.json());
+
+    let token = (a.p1 || "") + (b.p2 || "");
+
+    log("TOKEN LENGTH: " + token.length);
+
+    return token;
+}
 
 let table;
 let currentData = [];
-
-// ================= LOAD TOKEN =================
-async function loadToken(){
-
-    log("loading token parts...");
-
-    let a = await fetch(T1_URL).then(r => r.json());
-    let b = await fetch(T2_URL).then(r => r.json());
-
-    let token = a.p1 + b.p2;
-
-    log("token ready");
-    return token;
-}
 
 // ================= LOAD DATA =================
 fetch(DATA_URL, {cache:"no-store"})
@@ -84,8 +85,8 @@ fetch(DATA_URL, {cache:"no-store"})
         height:"65vh",
 
         columns:[
-            {title:"Word", field:"word", cellClick:edit},
-            {title:"Meaning", field:"meaning", cellClick:edit},
+            {title:"Word", field:"word", cellClick:editCell},
+            {title:"Meaning", field:"meaning", cellClick:editCell},
             {
                 title:"Tag",
                 field:"tag",
@@ -95,17 +96,20 @@ fetch(DATA_URL, {cache:"no-store"})
                         ? v.map(t=>`<span class="chip">${t}</span>`).join(" ")
                         : "";
                 },
-                cellClick:edit
+                cellClick:editCell
             },
-            {title:"Score", field:"score", cellClick:edit}
+            {title:"Score", field:"score", cellClick:editCell}
         ]
     });
 
-    log("table ready");
+    log("TABLE READY");
+})
+.catch(e=>{
+    log("LOAD ERROR: " + e);
 });
 
 // ================= EDIT =================
-function edit(e, cell){
+function editCell(e, cell){
 
     let v = cell.getValue();
     let input = Array.isArray(v) ? v.join(",") : v;
@@ -119,62 +123,98 @@ function edit(e, cell){
 
     cell.setValue(final);
 
-    log("edited " + cell.getField());
+    log("EDITED: " + cell.getField());
 }
 
 // ================= SAVE =================
 async function saveToGitHub(){
 
-    log("save start");
+    log("========== SAVE START ==========");
 
-    let token = await loadToken();
+    try {
 
-    let json = {
-        items: currentData.map(d => ({
-            id:d.id,
-            word:d.word,
-            senses:[{
-                meaning:d.meaning?d.meaning.split(","):[],
-                tag:Array.isArray(d.tag)?d.tag:[]
-            }]
-        }))
-    };
+        let token = await loadToken();
 
-    let content = btoa(unescape(encodeURIComponent(JSON.stringify(json, null, 2))));
+        if(!token || token.length < 10){
+            log("TOKEN INVALID");
+            return;
+        }
 
-    // get sha
-    let shaRes = await fetch(
-        `https://api.github.com/repos/${REPO}/contents/${FILE}`,
-        {
-            headers:{
-                "Authorization":"Bearer " + token
+        // build json
+        let json = {
+            items: currentData.map(d => ({
+                id:d.id,
+                word:d.word,
+                senses:[{
+                    meaning:d.meaning?d.meaning.split(","):[],
+                    tag:Array.isArray(d.tag)?d.tag:[]
+                }]
+            }))
+        };
+
+        let content = btoa(unescape(encodeURIComponent(JSON.stringify(json, null, 2))));
+
+        // ================= GET SHA =================
+        log("GET SHA...");
+
+        let shaRes = await fetch(
+            `https://api.github.com/repos/${CONFIG.repo}/contents/${CONFIG.file}`,
+            {
+                headers:{
+                    "Authorization":"Bearer " + token
+                }
             }
+        );
+
+        let shaText = await shaRes.text();
+        log("SHA RAW RESPONSE:");
+        log(shaText);
+
+        let shaData = JSON.parse(shaText);
+
+        if(!shaData.sha){
+            log("NO SHA FOUND → STOP");
+            return;
         }
-    );
 
-    let shaData = await shaRes.json();
+        log("SHA OK");
 
-    // commit
-    let res = await fetch(
-        `https://api.github.com/repos/${REPO}/contents/${FILE}`,
-        {
-            method:"PUT",
-            headers:{
-                "Authorization":"Bearer " + token,
-                "Content-Type":"application/json"
-            },
-            body: JSON.stringify({
-                message:"update dict",
-                content:content,
-                sha:shaData.sha
-            })
+        // ================= UPDATE =================
+        log("SENDING UPDATE...");
+
+        let res = await fetch(
+            `https://api.github.com/repos/${CONFIG.repo}/contents/${CONFIG.file}`,
+            {
+                method:"PUT",
+                headers:{
+                    "Authorization":"Bearer " + token,
+                    "Content-Type":"application/json"
+                },
+                body: JSON.stringify({
+                    message:"update dict",
+                    content:content,
+                    sha:shaData.sha
+                })
+            }
+        );
+
+        let text = await res.text();
+
+        log("RESPONSE:");
+        log(text);
+
+        let result = JSON.parse(text);
+
+        if(result.commit){
+            log("✔ SAVE SUCCESS");
+        } else {
+            log("❌ SAVE FAILED");
         }
-    );
 
-    let r = await res.json();
-
-    log("save done");
-    log(JSON.stringify(r));
+    } catch(err){
+        log("FATAL ERROR:");
+        log(err.toString());
+    }
 }
 
 // ================= SEARCH =================
@@ -194,6 +234,7 @@ document.getElementById("search").addEventListener("input", e=>{
         (d.meaning && d.meaning.toLowerCase().includes(v)) ||
         (Array.isArray(d.tag) && d.tag.join(" ").toLowerCase().includes(v))
     );
+
 });
 
 </script>
