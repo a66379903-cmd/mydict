@@ -2,50 +2,28 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>My Dict iOS Stable v1.2</title>
+<title>My Dict v1.3 Safe</title>
 
 <link href="https://cdn.jsdelivr.net/npm/tabulator-tables@5.5.0/dist/css/tabulator.min.css" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/tabulator-tables@5.5.0/dist/js/tabulator.min.js"></script>
 
 <style>
-body{
-  font-family: -apple-system, Arial;
-  margin:10px;
-}
-
-#search{
-  width:100%;
-  padding:12px;
-  font-size:16px;
-  margin-bottom:10px;
-}
-
-#log{
-  height:120px;
-  overflow:auto;
-  background:#111;
-  color:#0f0;
-  font-size:12px;
-  padding:8px;
-  margin-bottom:10px;
-}
-
-.chip{
-  display:inline-block;
-  padding:2px 8px;
-  margin:2px;
-  border-radius:12px;
-  background:#eaeaea;
-  font-size:12px;
-}
+body{font-family:-apple-system;margin:10px;}
+#search{width:100%;padding:12px;margin-bottom:10px;font-size:16px;}
+#log{height:120px;background:#111;color:#0f0;overflow:auto;font-size:12px;padding:8px;margin-bottom:10px;}
+button{padding:10px;margin-bottom:10px;}
+.chip{display:inline-block;padding:2px 8px;margin:2px;border-radius:12px;background:#eaeaea;font-size:12px;}
 </style>
 </head>
 
 <body>
 
-<div>版本：v1.2（点击弹窗编辑版）</div>
+<div>MyDict v1.3 Safe</div>
 
-<input id="search" placeholder="Search word / meaning / tag..." />
+<input id="search" placeholder="search..." />
+<br>
+
+<button onclick="saveToGitHub()">💾 Save to GitHub</button>
 
 <pre id="log"></pre>
 
@@ -57,179 +35,135 @@ function log(msg){
     document.getElementById("log").innerText += msg + "\n";
 }
 
+// ================= CONFIG =================
+const CONFIG = {
+    token: "PASTE_TOKEN_HERE",   // 👈 你自己填
+    repo: "a66379903-cmd/mydict",
+    file: "mydict.json"
+};
+
 const DATA_URL =
 "https://raw.githubusercontent.com/a66379903-cmd/mydict/main/mydict.json";
 
 let table;
+let currentData = [];
 
-log("PAGE LOADED");
-log("FETCH START...");
+log("LOAD START");
 
-// ---------------------------
-// FETCH DATA
-// ---------------------------
+// ================= LOAD =================
 fetch(DATA_URL, { cache: "no-store" })
-.then(res => {
-    log("HTTP STATUS: " + res.status);
-    return res.json();
-})
+.then(r => r.json())
 .then(data => {
 
-    log("DATA RECEIVED");
-
-    if(!data.items){
-        log("ERROR: no items");
-        data = [];
-    } else {
-        data = data.items;
-    }
-
-    // flatten
-    data = data.map(item => {
-
-        let firstSense = item.senses?.[0] || {};
-
+    data = data.items.map(item => {
+        let s = item.senses?.[0] || {};
         return {
+            id: item.id,
             word: item.word,
-            meaning: (firstSense.meaning || []).join(","),
-            tag: firstSense.tag || [],
+            meaning: (s.meaning || []).join(","),
+            tag: s.tag || [],
             score: item.id
         };
-
     });
 
-    log("FLATTEN DONE");
-    log("DATA LENGTH: " + data.length);
+    currentData = data;
 
-    // ---------------------------
-    // TABLE
-    // ---------------------------
     table = new Tabulator("#table", {
-        data: data,
-        layout: "fitColumns",
-        height: "70vh",
+        data:data,
+        layout:"fitColumns",
+        height:"65vh",
 
-        columns: [
-            {
-                title:"Word",
-                field:"word",
-                cellClick:function(e, cell){
-                    openEditor(cell);
-                }
-            },
-            {
-                title:"Meaning",
-                field:"meaning",
-                cellClick:function(e, cell){
-                    openEditor(cell);
-                }
-            },
+        columns:[
+            {title:"Word", field:"word", cellClick:editCell},
+            {title:"Meaning", field:"meaning", cellClick:editCell},
             {
                 title:"Tag",
                 field:"tag",
                 formatter:function(cell){
-                    let val = cell.getValue();
-                    if(!Array.isArray(val)) return "";
-                    return val.map(t => `<span class="chip">${t}</span>`).join(" ");
+                    let v = cell.getValue();
+                    return Array.isArray(v)
+                        ? v.map(t=>`<span class="chip">${t}</span>`).join(" ")
+                        : "";
                 },
-                cellClick:function(e, cell){
-                    openEditor(cell);
-                }
+                cellClick:editCell
             },
-            {
-                title:"Score",
-                field:"score",
-                cellClick:function(e, cell){
-                    openEditor(cell);
-                }
-            }
+            {title:"Score", field:"score", cellClick:editCell}
         ]
     });
 
-    log("TABLE READY");
-})
-.catch(err=>{
-    log("FETCH ERROR: " + err);
+    log("READY");
 });
 
+// ================= EDIT =================
+function editCell(e, cell){
 
-// ---------------------------
-// CLICK EDITOR（核心）
-// ---------------------------
-function openEditor(cell){
+    let v = cell.getValue();
+    let input = Array.isArray(v) ? v.join(",") : v;
 
-    let oldValue = cell.getValue();
+    let nv = prompt("edit:", input);
+    if(nv === null) return;
 
-    let inputValue = Array.isArray(oldValue)
-        ? oldValue.join(",")
-        : oldValue;
+    let final = Array.isArray(v)
+        ? nv.split(",").map(x=>x.trim()).filter(x=>x)
+        : nv;
 
-    let newValue = prompt("Edit value:", inputValue);
+    cell.setValue(final);
 
-    if(newValue === null){
-        log("EDIT CANCELLED");
-        return;
-    }
-
-    let finalValue;
-
-    // tag数组处理
-    if(Array.isArray(oldValue)){
-        finalValue = newValue
-            .split(",")
-            .map(x => x.trim())
-            .filter(x => x);
-    }else{
-        finalValue = newValue;
-    }
-
-    cell.setValue(finalValue);
-
-    log("UPDATED: " + JSON.stringify(cell.getRow().getData()));
+    log("EDIT: " + cell.getField());
 }
 
+// ================= SAVE =================
+async function saveToGitHub(){
 
-// ---------------------------
-// SEARCH
-// ---------------------------
-const input = document.getElementById("search");
+    log("SAVE START");
 
-let timer;
+    let json = {
+        items: currentData.map(d => ({
+            id: d.id,
+            word: d.word,
+            senses: [{
+                meaning: d.meaning ? d.meaning.split(",") : [],
+                tag: Array.isArray(d.tag) ? d.tag : []
+            }]
+        }))
+    };
 
-input.addEventListener("input", function(e){
+    let content = btoa(unescape(encodeURIComponent(JSON.stringify(json, null, 2))));
 
-    const v = e.target.value.trim().toLowerCase();
-
-    clearTimeout(timer);
-
-    timer = setTimeout(()=>{
-
-        if(!table){
-            log("TABLE NOT READY");
-            return;
+    // get sha
+    let shaRes = await fetch(
+        `https://api.github.com/repos/${CONFIG.repo}/contents/${CONFIG.file}`,
+        {
+            headers:{
+                "Authorization":"Bearer " + CONFIG.token
+            }
         }
+    );
 
-        if(v === ""){
-            table.clearFilter();
-            log("FILTER CLEARED");
-            return;
+    let shaData = await shaRes.json();
+
+    // commit update
+    let res = await fetch(
+        `https://api.github.com/repos/${CONFIG.repo}/contents/${CONFIG.file}`,
+        {
+            method:"PUT",
+            headers:{
+                "Authorization":"Bearer " + CONFIG.token,
+                "Content-Type":"application/json"
+            },
+            body: JSON.stringify({
+                message:"update dict",
+                content: content,
+                sha: shaData.sha
+            })
         }
+    );
 
-        table.setFilter(function(data){
+    let r = await res.json();
 
-            return (
-                (data.word && data.word.toLowerCase().includes(v)) ||
-                (data.meaning && data.meaning.toLowerCase().includes(v)) ||
-                (Array.isArray(data.tag) && data.tag.join(" ").toLowerCase().includes(v))
-            );
-
-        });
-
-        log("SEARCH: " + v);
-
-    }, 120);
-
-});
+    log("SAVE DONE");
+    log(JSON.stringify(r));
+}
 
 </script>
 
