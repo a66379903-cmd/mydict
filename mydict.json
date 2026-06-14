@@ -1,0 +1,110 @@
+{
+  "items": [
+    {
+      "id": 1,
+      "word": "suspect",
+      "senses": [
+        {
+          "type": "v",
+          "meaning": ["怀疑"],
+          "tag": ["心理判断类","怀疑"],
+          "pattern": [
+            {
+              "en": "suspect sb of doing",
+              "zh": "有依据地怀疑某人做了某事"
+            }
+          ],
+          "note": "基于线索的怀疑"
+        },
+        {
+          "type": "n",
+          "meaning": ["嫌疑人"],
+          "tag": ["法律类"],
+          "pattern": [
+            {
+              "en": "the suspect was arrested",
+              "zh": "嫌疑人被逮捕"
+            }
+          ],
+          "note": "名词用法：犯罪嫌疑人"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "word": "doubt",
+      "senses": [
+        {
+          "type": "v",
+          "meaning": ["怀疑", "不相信"],
+          "tag": ["心理判断类"],
+          "pattern": [
+            {
+              "en": "doubt that...",
+              "zh": "怀疑某事是否真实"
+            }
+          ],
+          "note": "偏向不信任真实性"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "word": "suggest",
+      "senses": [
+        {
+          "type": "v",
+          "meaning": ["建议"],
+          "tag": ["建议类"],
+          "pattern": [
+            {
+              "en": "suggest doing",
+              "zh": "建议做某事"
+            },
+            {
+              "en": "suggest that...",
+              "zh": "建议..."
+            }
+          ],
+          "note": "可正式或中性表达建议"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "word": "prevent",
+      "senses": [
+        {
+          "type": "v",
+          "meaning": ["阻止"],
+          "tag": ["阻止类"],
+          "pattern": [
+            {
+              "en": "prevent sb from doing",
+              "zh": "阻止某人做某事"
+            }
+          ],
+          "note": "强调阻止发生"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "word": "allow",
+      "senses": [
+        {
+          "type": "v",
+          "meaning": ["允许"],
+          "tag": ["许可类"],
+          "pattern": [
+            {
+              "en": "allow sb to do",
+              "zh": "允许某人做某事"
+            }
+          ],
+          "note": "给予许可"
+        }
+      ]
+    }
+  ]
+}
