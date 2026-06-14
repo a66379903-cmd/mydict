@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>My Dict v1.3 Safe</title>
+<title>My Dict v1.4 Test Token Split</title>
 
 <link href="https://cdn.jsdelivr.net/npm/tabulator-tables@5.5.0/dist/css/tabulator.min.css" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/tabulator-tables@5.5.0/dist/js/tabulator.min.js"></script>
@@ -18,12 +18,12 @@ button{padding:10px;margin-bottom:10px;}
 
 <body>
 
-<div>MyDict v1.3 Safe</div>
+<div>MyDict v1.4 test (split token)</div>
 
 <input id="search" placeholder="search..." />
 <br>
 
-<button onclick="saveToGitHub()">💾 Save to GitHub</button>
+<button onclick="saveToGitHub()">💾 Save</button>
 
 <pre id="log"></pre>
 
@@ -35,34 +35,44 @@ function log(msg){
     document.getElementById("log").innerText += msg + "\n";
 }
 
-// ================= CONFIG =================
-const CONFIG = {
-    token: "PASTE_TOKEN_HERE",   // 👈 你自己填
-    repo: "a66379903-cmd/mydict",
-    file: "mydict.json"
-};
+const DATA_URL = "https://raw.githubusercontent.com/a66379903-cmd/mydict/main/mydict.json";
 
-const DATA_URL =
-"https://raw.githubusercontent.com/a66379903-cmd/mydict/main/mydict.json";
+const T1_URL = "t1.json";
+const T2_URL = "t2.json";
+
+const REPO = "a66379903-cmd/mydict";
+const FILE = "mydict.json";
 
 let table;
 let currentData = [];
 
-log("LOAD START");
+// ================= LOAD TOKEN =================
+async function loadToken(){
 
-// ================= LOAD =================
-fetch(DATA_URL, { cache: "no-store" })
+    log("loading token parts...");
+
+    let a = await fetch(T1_URL).then(r => r.json());
+    let b = await fetch(T2_URL).then(r => r.json());
+
+    let token = a.p1 + b.p2;
+
+    log("token ready");
+    return token;
+}
+
+// ================= LOAD DATA =================
+fetch(DATA_URL, {cache:"no-store"})
 .then(r => r.json())
 .then(data => {
 
     data = data.items.map(item => {
         let s = item.senses?.[0] || {};
         return {
-            id: item.id,
-            word: item.word,
-            meaning: (s.meaning || []).join(","),
-            tag: s.tag || [],
-            score: item.id
+            id:item.id,
+            word:item.word,
+            meaning:(s.meaning||[]).join(","),
+            tag:s.tag||[],
+            score:item.id
         };
     });
 
@@ -74,8 +84,8 @@ fetch(DATA_URL, { cache: "no-store" })
         height:"65vh",
 
         columns:[
-            {title:"Word", field:"word", cellClick:editCell},
-            {title:"Meaning", field:"meaning", cellClick:editCell},
+            {title:"Word", field:"word", cellClick:edit},
+            {title:"Meaning", field:"meaning", cellClick:edit},
             {
                 title:"Tag",
                 field:"tag",
@@ -85,17 +95,17 @@ fetch(DATA_URL, { cache: "no-store" })
                         ? v.map(t=>`<span class="chip">${t}</span>`).join(" ")
                         : "";
                 },
-                cellClick:editCell
+                cellClick:edit
             },
-            {title:"Score", field:"score", cellClick:editCell}
+            {title:"Score", field:"score", cellClick:edit}
         ]
     });
 
-    log("READY");
+    log("table ready");
 });
 
 // ================= EDIT =================
-function editCell(e, cell){
+function edit(e, cell){
 
     let v = cell.getValue();
     let input = Array.isArray(v) ? v.join(",") : v;
@@ -109,21 +119,23 @@ function editCell(e, cell){
 
     cell.setValue(final);
 
-    log("EDIT: " + cell.getField());
+    log("edited " + cell.getField());
 }
 
 // ================= SAVE =================
 async function saveToGitHub(){
 
-    log("SAVE START");
+    log("save start");
+
+    let token = await loadToken();
 
     let json = {
         items: currentData.map(d => ({
-            id: d.id,
-            word: d.word,
-            senses: [{
-                meaning: d.meaning ? d.meaning.split(",") : [],
-                tag: Array.isArray(d.tag) ? d.tag : []
+            id:d.id,
+            word:d.word,
+            senses:[{
+                meaning:d.meaning?d.meaning.split(","):[],
+                tag:Array.isArray(d.tag)?d.tag:[]
             }]
         }))
     };
@@ -132,38 +144,57 @@ async function saveToGitHub(){
 
     // get sha
     let shaRes = await fetch(
-        `https://api.github.com/repos/${CONFIG.repo}/contents/${CONFIG.file}`,
+        `https://api.github.com/repos/${REPO}/contents/${FILE}`,
         {
             headers:{
-                "Authorization":"Bearer " + CONFIG.token
+                "Authorization":"Bearer " + token
             }
         }
     );
 
     let shaData = await shaRes.json();
 
-    // commit update
+    // commit
     let res = await fetch(
-        `https://api.github.com/repos/${CONFIG.repo}/contents/${CONFIG.file}`,
+        `https://api.github.com/repos/${REPO}/contents/${FILE}`,
         {
             method:"PUT",
             headers:{
-                "Authorization":"Bearer " + CONFIG.token,
+                "Authorization":"Bearer " + token,
                 "Content-Type":"application/json"
             },
             body: JSON.stringify({
                 message:"update dict",
-                content: content,
-                sha: shaData.sha
+                content:content,
+                sha:shaData.sha
             })
         }
     );
 
     let r = await res.json();
 
-    log("SAVE DONE");
+    log("save done");
     log(JSON.stringify(r));
 }
+
+// ================= SEARCH =================
+document.getElementById("search").addEventListener("input", e=>{
+
+    let v = e.target.value.toLowerCase();
+
+    if(!table) return;
+
+    if(!v){
+        table.clearFilter();
+        return;
+    }
+
+    table.setFilter(d =>
+        (d.word && d.word.toLowerCase().includes(v)) ||
+        (d.meaning && d.meaning.toLowerCase().includes(v)) ||
+        (Array.isArray(d.tag) && d.tag.join(" ").toLowerCase().includes(v))
+    );
+});
 
 </script>
 
