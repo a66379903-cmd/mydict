@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>My Dict iOS Stable v1.1</title>
+<title>My Dict iOS Stable v1.2</title>
 
 <link href="https://cdn.jsdelivr.net/npm/tabulator-tables@5.5.0/dist/css/tabulator.min.css" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/tabulator-tables@5.5.0/dist/js/tabulator.min.js"></script>
@@ -43,7 +43,7 @@ body{
 
 <body>
 
-<div>改进版本：1.1</div>
+<div>版本：v1.2（点击弹窗编辑版）</div>
 
 <input id="search" placeholder="Search word / meaning / tag..." />
 
@@ -66,7 +66,7 @@ log("PAGE LOADED");
 log("FETCH START...");
 
 // ---------------------------
-// FETCH
+// FETCH DATA
 // ---------------------------
 fetch(DATA_URL, { cache: "no-store" })
 .then(res => {
@@ -84,7 +84,7 @@ fetch(DATA_URL, { cache: "no-store" })
         data = data.items;
     }
 
-    // 扁平化
+    // flatten
     data = data.map(item => {
 
         let firstSense = item.senses?.[0] || {};
@@ -101,14 +101,29 @@ fetch(DATA_URL, { cache: "no-store" })
     log("FLATTEN DONE");
     log("DATA LENGTH: " + data.length);
 
+    // ---------------------------
+    // TABLE
+    // ---------------------------
     table = new Tabulator("#table", {
         data: data,
         layout: "fitColumns",
         height: "70vh",
 
         columns: [
-            {title:"Word", field:"word"},
-            {title:"Meaning", field:"meaning"},
+            {
+                title:"Word",
+                field:"word",
+                cellClick:function(e, cell){
+                    openEditor(cell);
+                }
+            },
+            {
+                title:"Meaning",
+                field:"meaning",
+                cellClick:function(e, cell){
+                    openEditor(cell);
+                }
+            },
             {
                 title:"Tag",
                 field:"tag",
@@ -116,9 +131,18 @@ fetch(DATA_URL, { cache: "no-store" })
                     let val = cell.getValue();
                     if(!Array.isArray(val)) return "";
                     return val.map(t => `<span class="chip">${t}</span>`).join(" ");
+                },
+                cellClick:function(e, cell){
+                    openEditor(cell);
                 }
             },
-            {title:"Score", field:"score"}
+            {
+                title:"Score",
+                field:"score",
+                cellClick:function(e, cell){
+                    openEditor(cell);
+                }
+            }
         ]
     });
 
@@ -127,6 +151,43 @@ fetch(DATA_URL, { cache: "no-store" })
 .catch(err=>{
     log("FETCH ERROR: " + err);
 });
+
+
+// ---------------------------
+// CLICK EDITOR（核心）
+// ---------------------------
+function openEditor(cell){
+
+    let oldValue = cell.getValue();
+
+    let inputValue = Array.isArray(oldValue)
+        ? oldValue.join(",")
+        : oldValue;
+
+    let newValue = prompt("Edit value:", inputValue);
+
+    if(newValue === null){
+        log("EDIT CANCELLED");
+        return;
+    }
+
+    let finalValue;
+
+    // tag数组处理
+    if(Array.isArray(oldValue)){
+        finalValue = newValue
+            .split(",")
+            .map(x => x.trim())
+            .filter(x => x);
+    }else{
+        finalValue = newValue;
+    }
+
+    cell.setValue(finalValue);
+
+    log("UPDATED: " + JSON.stringify(cell.getRow().getData()));
+}
+
 
 // ---------------------------
 // SEARCH
@@ -138,8 +199,6 @@ let timer;
 input.addEventListener("input", function(e){
 
     const v = e.target.value.trim().toLowerCase();
-
-    log("SEARCH: " + v);
 
     clearTimeout(timer);
 
@@ -165,6 +224,8 @@ input.addEventListener("input", function(e){
             );
 
         });
+
+        log("SEARCH: " + v);
 
     }, 120);
 
